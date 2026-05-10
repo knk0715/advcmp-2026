@@ -33,7 +33,8 @@ void emitLoadConstant(int64_t targetConstant, ProgramEmitter &emitter)
         // The target constant is exactly zero.
         // Emit at least one instruction.
 
-        // TODO: Your Implementation Here
+        // Keep one valid instruction while leaving register value unchanged.
+        emitter.emitAddi(0);
 
         return;
     }
@@ -47,7 +48,8 @@ void emitLoadConstant(int64_t targetConstant, ProgramEmitter &emitter)
         // The target constant is representable as a signed 12-bit integer.
         // You can implement this case with one instruction.
 
-        // TODO: Your Implementation Here
+        // 12-bit signed immediate can be materialized directly.
+        emitter.emitAddi(targetConstant);
 
         return;
     }
@@ -61,7 +63,12 @@ void emitLoadConstant(int64_t targetConstant, ProgramEmitter &emitter)
         // The target constant is representable as a signed 32-bit integer.
         // You can implement this case with two instructions.
 
-        // TODO: Your Implementation Here
+        // Reconstruct signed 32-bit value using lui + addiw.
+        int64_t low12 = static_cast<int64_t>(signExtendBits(targetBits, 12));
+        int64_t upper20 = static_cast<int64_t>(
+            signExtendBits((targetBits >> 12) + static_cast<uint64_t>(low12 < 0), 20));
+        emitter.emitLui(upper20);
+        emitter.emitAddiw(low12);
 
         return;
     }
@@ -76,7 +83,26 @@ void emitLoadConstant(int64_t targetConstant, ProgramEmitter &emitter)
         // The total number of leading and trailing zeros is at least 32.
         // You can finish this case with four instructions.
 
-        // TODO: Your Implementation Here
+        uint64_t middleBits = targetBits >> trailingZeroBits;
+        int64_t low12 = static_cast<int64_t>(signExtendBits(middleBits, 12));
+        int64_t upper20 = static_cast<int64_t>(
+            signExtendBits((middleBits >> 12) + static_cast<uint64_t>(low12 < 0), 20));
+
+        // First create the compressed middle chunk as a signed 32-bit value.
+        emitter.emitLui(upper20);
+        emitter.emitAddiw(low12);
+
+        if (trailingZeroBits >= 32)
+        {
+            // Shifting by >= 32 removes any sign-extension artifact from addiw result.
+            emitter.emitSlli(trailingZeroBits);
+        }
+        else
+        {
+            // Zero-extend the lower 32-bit middle value while shifting into place.
+            emitter.emitSlli(32);
+            emitter.emitSrli(32 - trailingZeroBits);
+        }
 
         return;
     }

@@ -10,7 +10,15 @@ using namespace llvm;
 PreservedAnalyses InstructionCounter::run(Function &F,
                                           FunctionAnalysisManager &FAM) {
   //******************************** ASSIGNMENT ********************************
-  // TODO: Your Implementation Here
+  (void)FAM;
+  InstructionCounter.clear();
+
+  // Walk every instruction in the function and count by opcode name.
+  for (auto &BB : F) {
+    for (auto &I : BB) {
+      ++InstructionCounter[I.getOpcodeName()];
+    }
+  }
 
   //****************************** ASSIGNMENT END ******************************
 
